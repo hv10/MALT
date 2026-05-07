@@ -1,4 +1,4 @@
-# MALT - Ultra Fast Labelling Tool
+# MALT - Margin-Aware Labeling Tool
 > I have a bunch of images I need to label - fast. 
 > I do not want to train / setup any model for it right now.
 
