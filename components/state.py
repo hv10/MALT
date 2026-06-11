@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+from nicegui import binding
 
 class State:
     DATA = pd.DataFrame(
@@ -46,3 +47,10 @@ def _restore(state, snapshot):
     state.COEFF = snapshot["COEFF"]
     state.INTERCEPTS = snapshot["INTERCEPTS"]
 
+async def update_selected_rows_table(state, grid):
+    rows = await grid.get_selected_rows()
+    rows = [r["fpth"] for r in rows]
+    state.SELECTED_ROWS = rows
+
+def update_selected_rows(state, rows):
+    state.SELECTED_ROWS = [state.DATA.iloc[r].fpth for r in rows]
