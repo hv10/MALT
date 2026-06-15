@@ -83,7 +83,7 @@ class data_preview(ui.element):
         ).bind_value(self.pagination_state, "p")
 
     @ui.refreshable_method
-    def ui(self, *args):
+    def ui(self):
         self.dialog = ui.dialog()
         with self.dialog:
             with ui.card().classes("p-0 overflow-scroll max-w-[95vw] max-h-[95vh]"):
@@ -118,3 +118,5 @@ class data_preview(ui.element):
             self.card_grid()
             with ui.row().classes("w-full items-center justify-between"):
                 self.pagination()
+    def refresh(self, state):
+        self.update_selected_rows(state.SELECTED_ROWS)

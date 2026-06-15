@@ -340,7 +340,7 @@ def make_gui(state):
     ElementFilter(kind=ui.input).props("dense")
     ElementFilter(kind=ui.select).props("dense options-dense")
     with_loading_overlay.overlay = make_overlay()
-    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.ui.refresh])
+    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.refresh])
     ui.keyboard(on_key=global_handle_key)
 
 
