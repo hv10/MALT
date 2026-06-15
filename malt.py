@@ -91,38 +91,14 @@ from components.projection import update_projection
 from components.ui.force_sim_plot import force_similarity_plot
 
 
-def add_cls_from_file(state, content):
-    classes = [l.strip() for l in content.split("\n")]
-    lcls = len(state.META["classes"])
-    for cls in classes:
-        if cls and cls not in state.META["classes"]:
-            state.META["classes"].append(cls)
-    ui.notify(f"""Added {len(state.META["classes"]) - lcls} new classes.""")
-    plot_controls.refresh()
-    label_controls.refresh()
-
-
-def add_new_cls(state, inp):
-    cls = inp.value
-    if cls and cls not in state.META["classes"]:
-        state.META["classes"].append(cls)
-        inp.value = ""
-    plot_controls.refresh()
-    label_controls.refresh()
-
-
-def remove_class(state, cls):
-    if cls and cls in state.META["classes"]:
-        state.META["classes"].remove(cls)
-        plot_controls.refresh()
-        label_controls.refresh()
-    else:
-        ui.notify(f"'{cls}' not in classes.")
-
 
 # ==================== DATA Mgmt ====================
 
-from components.data_mgmt import load_folder, load_prior_state, clear_class_for_selected, set_class_for_selected
+from components.data_mgmt import (
+    load_folder, load_prior_state, 
+    clear_class_for_selected, set_class_for_selected,
+    add_cls_from_file, add_new_cls, remove_class
+)
 
 # ==================== GUI ====================
 
@@ -249,8 +225,6 @@ def label_controls(state):
         """,
         )
         table.on("del_label", lambda e: remove_class(state, e.args["name"]))
-
-
 
 
 def make_overlay():

@@ -164,3 +164,28 @@ async def clear_class_for_selected(state):
             state.DATA.at[idx, "cls"] = ()
             state.DATA.at[idx, "annot"] = "i"
         refresh(state)
+
+def add_cls_from_file(state, content):
+    classes = [l.strip() for l in content.split("\n")]
+    lcls = len(state.META["classes"])
+    for cls in classes:
+        if cls and cls not in state.META["classes"]:
+            state.META["classes"].append(cls)
+    ui.notify(f"""Added {len(state.META["classes"]) - lcls} new classes.""")
+    refresh(state)
+
+
+def add_new_cls(state, inp):
+    cls = inp.value
+    if cls and cls not in state.META["classes"]:
+        state.META["classes"].append(cls)
+        inp.value = ""
+        refresh(state)
+
+
+def remove_class(state, cls):
+    if cls and cls in state.META["classes"]:
+        state.META["classes"].remove(cls)
+        refresh(state)
+    else:
+        ui.notify(f"'{cls}' not in classes.")
