@@ -6,11 +6,12 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from nicegui import ui
 
 from .embeddings import apply_emb_to_df
 from .state import State
 from .utils import with_loading_overlay, refresh
-from .history import undoable
+from .history import undoable, push_undo
 
 
 def update_data_positions(df, x, y):
@@ -124,3 +125,42 @@ def update_row_cls(state, rowId, cls):
         refresh(state)
     else:
         ui.notify(f"Class '{cls}' does not exist.")
+
+@undoable
+def set_class_for_selected(state, cls):
+    if isinstance(cls, str):  # only a single label selected from dropdown
+        cls = [cls]
+    cls = tuple(sorted(cls))
+    indices_to_update = state.DATA.index[state.DATA["fpth"].isin(state.SELECTED_ROWS)]
+    for idx in indices_to_update:
+        if state.ADD_LABELS:
+            state.DATA.at[idx, "cls"] = tuple(
+                sorted(set(state.DATA.at[idx, "cls"]) | set(cls))
+            )
+        else:
+            state.DATA.at[idx, "cls"] = cls
+        state.DATA.at[idx, "annot"] = "h"
+
+    print(f"set class {cls} for selected rows.")
+    refresh(state)
+
+async def clear_class_for_selected(state):
+    indices_to_update = state.DATA.index[state.DATA["fpth"].isin(state.SELECTED_ROWS)]
+    if indices_to_update.empty:
+        ui.notify("No rows selected.")
+        return
+    with ui.dialog() as dialog, ui.card():
+        ui.label(f"Are you sure you want to clear {len(indices_to_update)} labels?")
+        with ui.row():
+            ui.button("Yes", on_click=lambda: dialog.submit("yes")).classes(
+                "bg-red-700"
+            )
+            ui.button("Cancel", on_click=lambda: dialog.submit("cancel"))
+
+    result = await dialog
+    if result == "yes":
+        push_undo(state)
+        for idx in indices_to_update:
+            state.DATA.at[idx, "cls"] = ()
+            state.DATA.at[idx, "annot"] = "i"
+        refresh(state)

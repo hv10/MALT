@@ -81,46 +81,6 @@ async def save_async_cb(state, btn, unique=False):
     ui.notify("Save Successful")
 
 
-@undoable
-def set_class_for_selected(state, cls):
-    if isinstance(cls, str):  # only a single label selected from dropdown
-        cls = [cls]
-    cls = tuple(sorted(cls))
-    indices_to_update = state.DATA.index[state.DATA["fpth"].isin(state.SELECTED_ROWS)]
-    for idx in indices_to_update:
-        if state.ADD_LABELS:
-            state.DATA.at[idx, "cls"] = tuple(
-                sorted(set(state.DATA.at[idx, "cls"]) | set(cls))
-            )
-        else:
-            state.DATA.at[idx, "cls"] = cls
-        state.DATA.at[idx, "annot"] = "h"
-
-    print(f"set class {cls} for selected rows.")
-    refresh(state)
-
-
-async def clear_class_for_selected(state):
-    indices_to_update = state.DATA.index[state.DATA["fpth"].isin(state.SELECTED_ROWS)]
-    if indices_to_update.empty:
-        ui.notify("No rows selected.")
-        return
-    with ui.dialog() as dialog, ui.card():
-        ui.label(f"Are you sure you want to clear {len(indices_to_update)} labels?")
-        with ui.row():
-            ui.button("Yes", on_click=lambda: dialog.submit("yes")).classes(
-                "bg-red-700"
-            )
-            ui.button("Cancel", on_click=lambda: dialog.submit("cancel"))
-
-    result = await dialog
-    if result == "yes":
-        push_undo(state)
-        for idx in indices_to_update:
-            state.DATA.at[idx, "cls"] = ()
-            state.DATA.at[idx, "annot"] = "i"
-        refresh(state)
-
 
 def remove_file(state, i):
     state.DATA.drop(index=i, inplace=True)
@@ -162,7 +122,7 @@ def remove_class(state, cls):
 
 # ==================== DATA Mgmt ====================
 
-from components.data_mgmt import load_folder, load_prior_state
+from components.data_mgmt import load_folder, load_prior_state, clear_class_for_selected, set_class_for_selected
 
 # ==================== GUI ====================
 
@@ -172,6 +132,7 @@ from components.ui.data_preview import data_preview
 from components.ui.ternary_plot import ternary_plot
 from components.ui.info_chip import make_info_chip
 from components.ui.data_table import data_table, update_data_table
+from components.ui.class_hist import class_hist 
 
 async def handle_file_upload(state, dialog, e):
     content = await e.file.text()
@@ -290,23 +251,6 @@ def label_controls(state):
         table.on("del_label", lambda e: remove_class(state, e.args["name"]))
 
 
-@ui.refreshable
-def class_hist(state):
-    # Explode 'cls' so each label becomes a separate row
-    cls_exploded = state.DATA["cls"].explode().astype(str)
-
-    # Count occurrences of each label
-    label_counts = (
-        cls_exploded.value_counts()
-        .reindex(state.META["classes"], fill_value=0)
-        .reset_index()
-    )
-    label_counts.columns = ["label", "count"]
-
-    # Plot using Plotly Express
-    fig = px.bar(label_counts, x="count", y="label", orientation="h")
-    ui.label("Class Frequency")
-    ui.plotly(fig).classes("w-full")
 
 
 def make_overlay():
@@ -322,7 +266,8 @@ def make_overlay():
 
 
 def progress_info(state):
-    get_progress = lambda d: d["annot"].value_counts().get("h", 0) / len(d)
+    def get_progress(d):
+        return d["annot"].value_counts().get("h", 0) / len(d)
     with ui.row(wrap=False).classes("w-fit items-center"):
         ui.slider(min=0, max=1).bind_value_from(
             state, "DATA", backward=get_progress
@@ -395,12 +340,12 @@ def make_gui(state):
     ElementFilter(kind=ui.input).props("dense")
     ElementFilter(kind=ui.select).props("dense options-dense")
     with_loading_overlay.overlay = make_overlay()
-    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh])
+    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.ui.refresh])
     ui.keyboard(on_key=global_handle_key)
 
 
 # ==================== MAIN ====================
-def setup_state(model, directory, color_blind, prior, fullscreen, theme, task):
+def setup_state(model, directory, color_blind, prior, theme, task):
     global STATE
 
     if STATE is None:
@@ -499,7 +444,6 @@ parser.add_argument(
 parser.add_argument("-d", "--directory", type=Path, default=Path.cwd())
 parser.add_argument("--color-blind", action="store_true")
 parser.add_argument("--prior", action="store_true")
-parser.add_argument("-f", "--fullscreen", action="store_true")
 parser.add_argument("--theme", choices=["dark", "light"], default="dark")
 parser.add_argument(
     "--prepare", action="store_true", help="Run data preparation, save and exit."
@@ -512,7 +456,6 @@ setup_cb = partial(
     args.directory,
     args.color_blind,
     args.prior,
-    args.fullscreen,
     args.theme,
     args.task,
 )
