@@ -33,7 +33,7 @@ def refresh(state, group=None):
     to_update = getattr(refresh, "to_update", set())
     for up_func in to_update:
         if group is None or up_func[1] == group:
-            up_func(state)
+            up_func[0](state)
 
 def register_refresh(elements, group=None):
     to_update = getattr(refresh, "to_update", set())

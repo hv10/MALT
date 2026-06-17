@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 from nicegui import binding
+from pathlib import Path
 
 class State:
     DATA = pd.DataFrame(
@@ -18,8 +19,9 @@ class State:
     }
     NEW_ROW = lambda fpth: (str(fpth), None, None, None, "", "i", [])  # noqa: E731
     SELECTED_ROWS = set()
-    OUT_DIR = None
+    OUT_DIR = Path.cwd()
     COLORBLIND = False
+    THEME = "dark"
     COEFF = None
     INTERCEPTS = None
     PLOT = None

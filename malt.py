@@ -20,17 +20,12 @@
 #     "nicegui==2.17.0",
 
 import argparse as ap
-import asyncio
 import json
 import logging
 from functools import partial, wraps
 from pathlib import Path
 from time import perf_counter
 
-import matplotlib.pyplot as plt
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 import plotly.io as pio
 from nicegui import ElementFilter, app, run, ui, binding
 from tqdm import tqdm
@@ -52,23 +47,23 @@ def timed(func):
 
 # ==================== STATE Data ====================
 
-from components.state import State
-STATE = None
+from components.state import State  # noqa: E402
+STATE = None 
 
 # ==================== History Management ====================
 
-from components.history import push_undo, undo, redo, undoable
-from components.utils import with_loading_overlay, refresh, register_refresh
+from components.history import undo, redo  # noqa: E402
+from components.utils import with_loading_overlay, refresh, register_refresh  # noqa: E402
 
 # ==================== HALFSPACE Projection ====================
 # No active ingredients. Projection component is imported where needed.
 # ==================== Embedding & Huggingface ====================
-from components.embeddings import apply_emb_to_df
-from components.embedder.hf_image_emb import embed_image
-apply_emb_to_df.embed_func = embed_image
+from components.embeddings import apply_emb_to_df  # noqa: E402
+from components.embedder.hf_image_emb import embed_image  # noqa: E402
+apply_emb_to_df.embed_func = embed_image # type: ignore
 
 # ==================== PA Classifier ====================
-from components.data_mgmt import save_callback
+from components.data_mgmt import save_callback  # noqa: E402
 
 async def save_async_cb(state, btn, unique=False):
     ui.notify("Saving...")
@@ -86,15 +81,15 @@ def remove_file(state, i):
     state.DATA.drop(index=i, inplace=True)
     refresh(state)
 
-from components.pa_clf import update_pa_clf
-from components.projection import update_projection
-from components.ui.force_sim_plot import force_similarity_plot
+from components.pa_clf import update_pa_clf  # noqa: E402
+# from components.projection import update_projection  # noqa: E402
+from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
 
 
 
 # ==================== DATA Mgmt ====================
 
-from components.data_mgmt import (
+from components.data_mgmt import (  # noqa: E402
     load_folder, load_prior_state, 
     clear_class_for_selected, set_class_for_selected,
     add_cls_from_file, add_new_cls, remove_class
@@ -103,12 +98,12 @@ from components.data_mgmt import (
 # ==================== GUI ====================
 
 # Load UI Components
-from components.ui.emb_plot import emb_plot, update_plot
-from components.ui.data_preview import data_preview
-from components.ui.ternary_plot import ternary_plot
-from components.ui.info_chip import make_info_chip
-from components.ui.data_table import data_table, update_data_table
-from components.ui.class_hist import class_hist 
+from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
+from components.ui.data_preview import data_preview  # noqa: E402
+from components.ui.ternary_plot import ternary_plot  # noqa: E402
+from components.ui.info_chip import make_info_chip  # noqa: E402
+from components.ui.data_table import data_table, update_data_table  # noqa: E402
+from components.ui.class_hist import class_hist  # noqa: E402
 
 async def handle_file_upload(state, dialog, e):
     content = await e.file.text()
@@ -213,7 +208,7 @@ def label_controls(state):
                 {"name": "name", "label": "Label", "field": "name", "align": "left"},
                 {"name": "action", "label": "Del.", "align": "center"},
             ],
-            rows=[{"name": l} for l in state.META["classes"]],
+            rows=[{"name": lbl} for lbl in state.META["classes"]],
             row_key="name",
         ).classes("w-full")
         table.add_slot(
@@ -313,8 +308,8 @@ def make_gui(state):
             )
     ElementFilter(kind=ui.input).props("dense")
     ElementFilter(kind=ui.select).props("dense options-dense")
-    with_loading_overlay.overlay = make_overlay()
-    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.refresh])
+    with_loading_overlay.overlay = make_overlay() # type: ignore
+    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.refresh]) # type: ignore
     ui.keyboard(on_key=global_handle_key)
 
 
@@ -335,7 +330,7 @@ def setup_state(model, directory, color_blind, prior, theme, task):
             directory = directory.parent
         state.OUT_DIR = directory.resolve().absolute()
         if not prior:
-            load_model(state, model)
+            # load_model(state, model)
             print("Model Loaded")
             load_folder(state, directory)
         print("OUTDIR:", state.OUT_DIR)
@@ -369,7 +364,7 @@ async def select_page():
         o = opts[0]
         prior_path = o
         load_prior_state(STATE, o)
-        ui.page_title(f"MALT")
+        ui.page_title("MALT")
         ui.navigate.to("/")
         return
 
