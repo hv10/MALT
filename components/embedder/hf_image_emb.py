@@ -1,16 +1,17 @@
 import torch
-from transformers import AutoModel, AutoProcessor
 from PIL import Image
+from transformers import AutoModel, AutoProcessor
+
 
 def load_model(model_name="microsoft/resnet50"):
     model = getattr(load_model, "model", None)
     if model is None:
-        load_model.model = { # type: ignore
+        load_model.model = {  # type: ignore
             # Load the model and processor (which will handle image pre-processing)
             "processor": AutoProcessor.from_pretrained(model_name),
             "model": AutoModel.from_pretrained(model_name),
         }
-    return load_model.model # type: ignore 
+    return load_model.model  # type: ignore
 
 
 def embed_image(filepath):

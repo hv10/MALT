@@ -27,7 +27,7 @@ from pathlib import Path
 from time import perf_counter
 
 import plotly.io as pio
-from nicegui import ElementFilter, app, run, ui, binding
+from nicegui import ElementFilter, app, binding, run, ui
 from tqdm import tqdm
 
 tqdm.pandas()
@@ -48,22 +48,29 @@ def timed(func):
 # ==================== STATE Data ====================
 
 from components.state import State  # noqa: E402
-STATE = None 
+
+STATE = None
 
 # ==================== History Management ====================
 
-from components.history import undo, redo  # noqa: E402
-from components.utils import with_loading_overlay, refresh, register_refresh  # noqa: E402
+from components.embedder.hf_image_emb import embed_image  # noqa: E402
 
 # ==================== HALFSPACE Projection ====================
 # No active ingredients. Projection component is imported where needed.
 # ==================== Embedding & Huggingface ====================
 from components.embeddings import apply_emb_to_df  # noqa: E402
-from components.embedder.hf_image_emb import embed_image  # noqa: E402
-apply_emb_to_df.embed_func = embed_image # type: ignore
+from components.history import redo, undo  # noqa: E402
+from components.utils import (  # noqa: E402
+    refresh,
+    register_refresh,
+    with_loading_overlay,
+)
+
+apply_emb_to_df.embed_func = embed_image  # type: ignore
 
 # ==================== PA Classifier ====================
 from components.data_mgmt import save_callback  # noqa: E402
+
 
 async def save_async_cb(state, btn, unique=False):
     ui.notify("Saving...")
@@ -76,34 +83,35 @@ async def save_async_cb(state, btn, unique=False):
     ui.notify("Save Successful")
 
 
-
 def remove_file(state, i):
     state.DATA.drop(index=i, inplace=True)
     refresh(state)
 
-from components.pa_clf import update_pa_clf  # noqa: E402
-# from components.projection import update_projection  # noqa: E402
-from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
-
-
 
 # ==================== DATA Mgmt ====================
-
 from components.data_mgmt import (  # noqa: E402
-    load_folder, load_prior_state, 
-    clear_class_for_selected, set_class_for_selected,
-    add_cls_from_file, add_new_cls, remove_class
+    add_cls_from_file,
+    add_new_cls,
+    clear_class_for_selected,
+    load_folder,
+    load_prior_state,
+    remove_class,
+    set_class_for_selected,
 )
+from components.pa_clf import update_pa_clf  # noqa: E402
+from components.ui.class_hist import class_hist  # noqa: E402
+from components.ui.data_preview import data_preview  # noqa: E402
+from components.ui.data_table import data_table, update_data_table  # noqa: E402
 
 # ==================== GUI ====================
-
 # Load UI Components
 from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
-from components.ui.data_preview import data_preview  # noqa: E402
-from components.ui.ternary_plot import ternary_plot  # noqa: E402
+
+# from components.projection import update_projection  # noqa: E402
+from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
 from components.ui.info_chip import make_info_chip  # noqa: E402
-from components.ui.data_table import data_table, update_data_table  # noqa: E402
-from components.ui.class_hist import class_hist  # noqa: E402
+from components.ui.ternary_plot import ternary_plot  # noqa: E402
+
 
 async def handle_file_upload(state, dialog, e):
     content = await e.file.text()
@@ -237,6 +245,7 @@ def make_overlay():
 def progress_info(state):
     def get_progress(d):
         return d["annot"].value_counts().get("h", 0) / len(d)
+
     with ui.row(wrap=False).classes("w-fit items-center"):
         ui.slider(min=0, max=1).bind_value_from(
             state, "DATA", backward=get_progress
@@ -248,6 +257,7 @@ def progress_info(state):
             state, "HIDE_LABELED"
         ).classes("ml-auto")
 
+
 def make_gui(state):
     """
     This function draws the complete GUI.
@@ -256,7 +266,7 @@ def make_gui(state):
         ui.dark_mode().enable()
         pio.templates.default = "plotly_dark"
     ui.add_css("body.loading, body.loading * { cursor: wait !important; }")
-    app.add_static_files("/images", state.OUT_DIR)
+    app.add_static_files("/samples", state.OUT_DIR)
     with ui.grid(columns="3fr 7fr").classes("w-full"):
         with ui.column().classes("w-full"):
             with ui.tabs() as tabs:
@@ -292,8 +302,12 @@ def make_gui(state):
         with ui.column().classes("w-full min-h-svh"):
             emb_plot(state)
             dprv = data_preview(state)
-            binding.bind_from(self_obj=dprv, self_name='selected_rows',
-                      other_obj=state, other_name="SELECTED_ROWS")
+            binding.bind_from(
+                self_obj=dprv,
+                self_name="selected_rows",
+                other_obj=state,
+                other_name="SELECTED_ROWS",
+            )
     with (
         ui.card()
         .classes("fixed top-4 left-1/2 -translate-x-1/2 z-50 p-0")
@@ -308,8 +322,16 @@ def make_gui(state):
             )
     ElementFilter(kind=ui.input).props("dense")
     ElementFilter(kind=ui.select).props("dense options-dense")
-    with_loading_overlay.overlay = make_overlay() # type: ignore
-    register_refresh(elements=[update_plot, update_data_table, force_similarity_plot.refresh, class_hist.refresh, dprv.refresh]) # type: ignore
+    with_loading_overlay.overlay = make_overlay()  # type: ignore
+    register_refresh(
+        elements=[
+            update_plot,
+            update_data_table,
+            force_similarity_plot.refresh,
+            class_hist.refresh,
+            dprv.refresh,
+        ]
+    )  # type: ignore
     ui.keyboard(on_key=global_handle_key)
 
 

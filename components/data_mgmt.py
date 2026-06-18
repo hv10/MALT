@@ -9,9 +9,9 @@ import pandas as pd
 from nicegui import ui
 
 from .embeddings import apply_emb_to_df
+from .history import push_undo, undoable
 from .state import State
-from .utils import with_loading_overlay, refresh
-from .history import undoable, push_undo
+from .utils import refresh, with_loading_overlay
 
 
 def update_data_positions(df, x, y):
@@ -26,6 +26,7 @@ def update_data_cls(df, indices, y_hat):
     for i, yh in zip(idx, y_hat):
         df.at[i, "cls"] = yh
     return df
+
 
 def load_folder(state, folder_pth):
     print(f"Loading Images from: {folder_pth}")
@@ -76,6 +77,7 @@ def load_prior_state(state, state_pth):
     print(state.DATA.info())
     print(state.DATA.head())
 
+
 @with_loading_overlay
 def save_callback(state, unique=False):
     if unique:
@@ -110,12 +112,14 @@ def save_callback(state, unique=False):
             zipf.writestr("pac_model.json", json.dumps(pac_model_dict, indent=2))
     return fpth
 
+
 def initialize_pos(df):
     X = np.vstack(df["emb"].values)
     w, data_x = dir_of_max_variance(X)
     projX = project_and_remove_direction(X, w)
     w2, data_y = dir_of_max_variance(projX)
     return data_x, data_y
+
 
 @undoable
 def update_row_cls(state, rowId, cls):
@@ -125,6 +129,7 @@ def update_row_cls(state, rowId, cls):
         refresh(state)
     else:
         ui.notify(f"Class '{cls}' does not exist.")
+
 
 @undoable
 def set_class_for_selected(state, cls):
@@ -143,6 +148,7 @@ def set_class_for_selected(state, cls):
 
     print(f"set class {cls} for selected rows.")
     refresh(state)
+
 
 async def clear_class_for_selected(state):
     indices_to_update = state.DATA.index[state.DATA["fpth"].isin(state.SELECTED_ROWS)]
@@ -164,6 +170,7 @@ async def clear_class_for_selected(state):
             state.DATA.at[idx, "cls"] = ()
             state.DATA.at[idx, "annot"] = "i"
         refresh(state)
+
 
 def add_cls_from_file(state, content):
     classes = [l.strip() for l in content.split("\n")]

@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.utils.extmath import randomized_svd
 
+
 def project_and_remove_direction(X, v):
     """
     Project each vector in X onto vector v and then remove this component from X.
@@ -65,6 +66,7 @@ def project_onto_orthogonal_complement(X, coeffs):
     X_proj = (X @ C) @ C.T
     X_residual = X - X_proj
     return X_residual
+
 
 def update_projection(state, coeffs, intercepts, project_X=True, run_pca=True):
     # project our data onto the (d-1)-simplex defined by coeffs[]

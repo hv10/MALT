@@ -1,5 +1,6 @@
-from nicegui import app
 from functools import wraps
+
+from nicegui import app
 
 
 def with_loading_overlay(func):
@@ -29,16 +30,19 @@ def with_loading_overlay(func):
 
     return wrapper
 
+
 def refresh(state, group=None):
     to_update = getattr(refresh, "to_update", set())
     for up_func in to_update:
         if group is None or up_func[1] == group:
             up_func[0](state)
 
+
 def register_refresh(elements, group=None):
     to_update = getattr(refresh, "to_update", set())
     elements = [(e, group) for e in elements]
-    refresh.to_update = to_update.union(set(elements)) # type: ignore
+    refresh.to_update = to_update.union(set(elements))  # type: ignore
+
 
 def format_cls_label(cls):
     if not cls:

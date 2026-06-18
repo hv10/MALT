@@ -1,7 +1,9 @@
-import pandas as pd
 import json
-from nicegui import binding
 from pathlib import Path
+
+import pandas as pd
+from nicegui import binding
+
 
 class State:
     DATA = pd.DataFrame(
@@ -35,6 +37,7 @@ class State:
     REDO_STACK = []
     MAX_HISTORY = 50
 
+
 def _snapshot(state):
     return {
         "DATA": state.DATA.copy(),
@@ -43,16 +46,19 @@ def _snapshot(state):
         "INTERCEPTS": list(state.INTERCEPTS) if state.INTERCEPTS is not None else None,
     }
 
+
 def _restore(state, snapshot):
     state.DATA = snapshot["DATA"]
     state.META = snapshot["META"]
     state.COEFF = snapshot["COEFF"]
     state.INTERCEPTS = snapshot["INTERCEPTS"]
 
+
 async def update_selected_rows_table(state, grid):
     rows = await grid.get_selected_rows()
     rows = [r["fpth"] for r in rows]
     state.SELECTED_ROWS = rows
+
 
 def update_selected_rows(state, rows):
     state.SELECTED_ROWS = [state.DATA.iloc[r].fpth for r in rows]

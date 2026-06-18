@@ -1,5 +1,6 @@
-from nicegui import ui
 import plotly.express as px
+from nicegui import ui
+
 
 @ui.refreshable
 def class_hist(state):

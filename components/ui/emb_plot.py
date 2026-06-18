@@ -1,7 +1,9 @@
-from nicegui import ui
 import plotly.express as px
-from ..utils import format_cls_label, with_loading_overlay
+from nicegui import ui
+
 from ..state import update_selected_rows
+from ..utils import format_cls_label, with_loading_overlay
+
 
 @with_loading_overlay
 def make_emb_plot(state):
@@ -89,16 +91,25 @@ def make_emb_plot(state):
     )
     return fig
 
+
+def make_hover(el, point):
+    with el:
+        el.classes("bg-amber-500")
+        ui.image("/samples/" + point["customdata"][0]).classes("w-full h-auto")
+    el.set_visibility(True)
+
+
 def update_plot(state):
     if state.PLOT is not None:
         state.PLOT.update_figure(make_emb_plot(state))
+
 
 def emb_plot(state):
     fig = make_emb_plot(state)
     with ui.row().classes("w-full relative"):
         plt = ui.plotly(fig).classes("w-full h-[65svh]").props("id='emb_plot'")
-        hover_img = ui.image().classes("absolute bottom-5 right-5 w-12 z-[10]")
-        hover_img.set_visibility(False)
+        hover_div = ui.image().classes("absolute bottom-5 right-5 w-12 h-12 z-[10]")
+        hover_div.set_visibility(False)
     handler = """(event) => {
         emitEvent('emb_pts_sel', event.points.map(point => point.customdata[3]));
     }"""
@@ -111,10 +122,7 @@ def emb_plot(state):
     plt.on("plotly_deselect", lambda: update_selected_rows(state, []))
     plt.on(
         "plotly_hover",
-        lambda e: (
-            hover_img.set_source("/images/" + e.args["points"][0]["customdata"][0]),
-            hover_img.set_visibility(True),
-        ),
+        lambda e: make_hover(hover_div, e.args["points"][0]),
     )
-    plt.on("plotly_unhover", lambda: hover_img.set_visibility(False))
+    plt.on("plotly_unhover", lambda: hover_div.set_visibility(False))
     state.PLOT = plt

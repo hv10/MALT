@@ -1,9 +1,11 @@
 import numpy as np
 from nicegui import ui
+
 from ..data_mgmt import update_data_positions
 from ..projection import update_projection
-from .info_chip import make_info_chip
 from .emb_plot import update_plot
+from .info_chip import make_info_chip
+
 
 def perpendicular_distance(x, y, x1, y1, x2, y2):
     """Calculate the perpendicular distance from point (x, y) to the line through (x1, y1) and (x2, y2)."""
@@ -87,6 +89,7 @@ def ternary_plot(state):
             ui.button("reset", on_click=lambda: update_axis(state, 0.5, 0))
     return plot
 
+
 def update_axis(state, x, y):
     if state.COEFF is None:
         ui.notify(
@@ -97,12 +100,15 @@ def update_axis(state, x, y):
     P = P / np.sum(P)
     state.META["axis"] = {"a": P[0], "b": P[1], "c": P[2]}
     ternary_plot.refresh(state)
-    update_data_positions(state.DATA, *update_projection(
-        state,
-        state.COEFF,
-        state.INTERCEPTS,
-        project_X=False,
-        run_pca=False,
-    ))
-    
+    update_data_positions(
+        state.DATA,
+        *update_projection(
+            state,
+            state.COEFF,
+            state.INTERCEPTS,
+            project_X=False,
+            run_pca=False,
+        ),
+    )
+
     update_plot(state)

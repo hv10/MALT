@@ -2,6 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from nicegui import ui
 
+
 @ui.refreshable
 def force_similarity_plot(
     state,

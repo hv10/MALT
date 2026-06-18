@@ -1,7 +1,10 @@
-from nicegui import ui
 from functools import wraps
-from .utils import with_loading_overlay, refresh
-from .state import _snapshot, _restore
+
+from nicegui import ui
+
+from .state import _restore, _snapshot
+from .utils import refresh, with_loading_overlay
+
 
 def push_undo(state):
     state.UNDO_STACK.append(_snapshot(state))

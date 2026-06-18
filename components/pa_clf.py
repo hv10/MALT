@@ -5,16 +5,18 @@ from sklearn.linear_model import SGDClassifier as SGD
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-from .utils import with_loading_overlay, refresh
+from .data_mgmt import update_data_cls, update_data_positions
 from .history import undoable
 from .projection import update_projection
-from .data_mgmt import update_data_cls, update_data_positions
+from .utils import refresh, with_loading_overlay
+
 
 def prepare_data_exact_match(state):
     h_annot = state.DATA["annot"] == "h"
     X = np.stack(state.DATA.loc[h_annot, "emb"])
     y, labels = pd.factorize(state.DATA.loc[h_annot, "cls"])
     return X, y, labels
+
 
 def prepare_data(state):
     h_annot = state.DATA["annot"] == "h"
@@ -27,6 +29,7 @@ def prepare_data(state):
     X = np.stack(df["emb"])
     y, labels = pd.factorize(df["cls"])
     return X, y, labels
+
 
 @with_loading_overlay
 @undoable
@@ -76,7 +79,9 @@ def update_pa_clf(state, sel_cls):
         np.squeeze(model.estimators_[sidx].intercept_) for sidx in sel_cls_ind
     ]
     # fix directionality by ensuring the mean of the positive class is in the positive direction
-    pos_x, data_y = update_projection(state, coeffs, intercepts, project_X=True, run_pca=True)
+    pos_x, data_y = update_projection(
+        state, coeffs, intercepts, project_X=True, run_pca=True
+    )
     state.DATA = update_data_positions(state.DATA, pos_x, data_y)
     state.COEFF = coeffs
     state.INTERCEPTS = intercepts

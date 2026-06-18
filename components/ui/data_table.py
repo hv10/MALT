@@ -1,6 +1,8 @@
-from ..utils import format_cls_label
-from ..state import update_selected_rows_table
 from nicegui import ui
+
+from ..state import update_selected_rows_table
+from ..utils import format_cls_label
+
 
 def get_table_data(state):
     sdf = state.DATA[["fpth", "cls", "annot"]].copy()

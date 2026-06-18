@@ -1,9 +1,13 @@
 import numpy as np
-from nicegui import ui, binding
+from nicegui import binding, ui
+
 from ..utils import format_cls_label, with_loading_overlay
 
+
 class data_preview(ui.element):
-    selected_rows = binding.BindableProperty(on_change=lambda sender, value: sender.update_selected_rows(value))
+    selected_rows = binding.BindableProperty(
+        on_change=lambda sender, value: sender.update_selected_rows(value)
+    )
     sources = []
 
     def __init__(self, state):
@@ -13,7 +17,7 @@ class data_preview(ui.element):
         self.pagination_state = {"ps": 25, "p": 1}
         self.current_idx = 0
         self.ui()
-    
+
     def update_selected_rows(self, rows):
         self.selected_rows = rows
         self.sources = (
@@ -38,7 +42,7 @@ class data_preview(ui.element):
             color="green" if el[2] == "h" else "blue" if el[2] == "m" else "default",
         ).classes("absolute right-2 bottom-2 z-[10]")
 
-    def open_zoom(self,idx):
+    def open_zoom(self, idx):
         self.current_idx = idx
         self.zoomed.set_source(self.sources[idx])
         self.modal_label.clear()
@@ -46,7 +50,7 @@ class data_preview(ui.element):
             self.make_lbl(self.labels[idx])
         self.dialog.open()
 
-    def on_key_dialog(self,e):
+    def on_key_dialog(self, e):
         if not self.dialog.value:  # dialog not open
             return
         if not e.action.keydown or e.action.repeat:
@@ -113,10 +117,14 @@ class data_preview(ui.element):
                 self.pagination()
                 ui.radio(
                     [25, 50, 100],
-                    on_change=lambda: (self.card_grid.refresh(), self.pagination.refresh()),
+                    on_change=lambda: (
+                        self.card_grid.refresh(),
+                        self.pagination.refresh(),
+                    ),
                 ).props("inline").bind_value(self.pagination_state, "ps")
             self.card_grid()
             with ui.row().classes("w-full items-center justify-between"):
                 self.pagination()
+
     def refresh(self, state):
         self.update_selected_rows(state.SELECTED_ROWS)
