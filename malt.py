@@ -461,7 +461,7 @@ if args.prepare:
 
 ui.run(
     index,
-    native=True,
+    native=False,
     favicon="🚀",
     title="MALT",
     reload=True,

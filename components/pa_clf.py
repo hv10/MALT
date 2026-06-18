@@ -90,6 +90,8 @@ def update_pa_clf(state, sel_cls):
     # these discern between exact and inclusive matching...
     X_full = np.stack(state.DATA["emb"])
     preds = model.decision_function(X_full)
+    state.PREDS = preds
+    state.SEL_LABEL_INDCS = sel_cls_ind
     binary_preds = (
         preds > state.CLS_THRESHOLD
     )  # this should probably guard against multilabel
@@ -101,3 +103,11 @@ def update_pa_clf(state, sel_cls):
         [tuple(sorted(labels[pred].to_list())) for pred in binary_preds],
     )
     refresh(state)
+
+def get_sample_prediction(state, idx):
+    preds = getattr(state,"PREDS",[])
+    if len(preds) == 0:
+        return []
+    if isinstance(idx,str):
+        idx = state.DATA.index[state.DATA["fpth"] == idx][0]
+    return preds[idx]

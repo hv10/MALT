@@ -1,3 +1,5 @@
+from components.pa_clf import get_sample_prediction
+from components.ui.prediction_viz import prediction_viz
 import numpy as np
 from nicegui import binding, ui
 
@@ -36,7 +38,9 @@ class data_preview(ui.element):
     def make_lbl(self, el):
         with ui.label(el[0]).classes("font-bold"):
             ui.tooltip(el[0])
-        ui.label(str(el[1]))
+        with ui.label(str(el[1])):
+            with ui.tooltip().classes("w-48 h-auto bg-white text-black"):
+                prediction_viz(get_sample_prediction(self.state_ref, el[0]), self.state_ref, all=True)
         ui.chip(
             str(el[2]).capitalize(),
             color="green" if el[2] == "h" else "blue" if el[2] == "m" else "default",

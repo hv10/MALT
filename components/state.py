@@ -11,6 +11,7 @@ class State:
     )
     MODEL = None
     PAC_MODEL = None
+    SEL_LABEL_INDCS = None
     PCA_MODEL = None
     META = {
         "classes": [],
