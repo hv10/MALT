@@ -12,12 +12,22 @@ class data_preview(ui.element):
     )
     sources = []
 
-    def __init__(self, state):
+    def __init__(self, state, make_sample_preview=None, make_detail_preview=None):
         super().__init__()
         self.state_ref = state
         self.selected_rows = set()
         self.pagination_state = {"ps": 25, "p": 1}
         self.current_idx = 0
+        self.make_detail_preview = (
+            make_detail_preview
+            if make_detail_preview is not None
+            else self.make_detail_preview
+        )
+        self.make_sample_preview = (
+            make_sample_preview
+            if make_sample_preview is not None
+            else self.make_sample_preview
+        )
         self.ui()
 
     def update_selected_rows(self, rows):
@@ -40,19 +50,36 @@ class data_preview(ui.element):
             ui.tooltip(el[0])
         with ui.label(str(el[1])):
             with ui.tooltip().classes("w-48 h-auto bg-white text-black"):
-                prediction_viz(get_sample_prediction(self.state_ref, el[0]), self.state_ref, all=True)
+                prediction_viz(
+                    get_sample_prediction(self.state_ref, el[0]),
+                    self.state_ref,
+                    all=True,
+                )
         ui.chip(
             str(el[2]).capitalize(),
             color="green" if el[2] == "h" else "blue" if el[2] == "m" else "default",
         ).classes("absolute right-2 bottom-2 z-[10]")
 
-    def open_zoom(self, idx):
-        self.current_idx = idx
-        self.zoomed.set_source(self.sources[idx])
+    def update_detail(self, idx):
+        self.zoomed.clear()
+        with self.zoomed:
+            self.make_detail_preview(self.sources[idx])
         self.modal_label.clear()
         with self.modal_label:
             self.make_lbl(self.labels[idx])
+
+    def open_detail(self, idx):
+        self.current_idx = idx
+        self.update_detail(idx)
         self.dialog.open()
+
+    def make_sample_preview(self, source):
+        return ui.label(source).classes(
+            "cursor-pointer hover:opacity-90 transition-opacity max-w-full"
+        )
+
+    def make_detail_preview(self, source):
+        return ui.label(source).classes("h-full w-full object-contain")
 
     def on_key_dialog(self, e):
         if not self.dialog.value:  # dialog not open
@@ -63,10 +90,7 @@ class data_preview(ui.element):
             self.current_idx = self.current_idx + 1 % len(self.sources)
         elif e.key == "ArrowLeft":
             self.current_idx = self.current_idx - 1 % len(self.sources)
-        self.zoomed.set_source(self.sources[self.current_idx])
-        self.modal_label.clear()
-        with self.modal_label:
-            self.make_lbl(self.labels[self.current_idx])
+        self.update_detail(self.current_idx)
 
     @ui.refreshable
     @with_loading_overlay
@@ -77,9 +101,8 @@ class data_preview(ui.element):
             for i in range((p - 1) * ps, min((p - 1) * ps + ps, len(self.sources))):
                 with ui.card().classes("w-2/12 overflow-hidden"):
                     self.make_lbl(self.labels[i])
-                    ui.image(self.sources[i]).classes(
-                        "cursor-pointer hover:opacity-90 transition-opacity max-w-full"
-                    ).on("click", lambda idx=i: self.open_zoom(idx))
+                    el = self.make_sample_preview(self.sources[i])
+                    el.on("click", lambda idx=i: self.open_detail(idx))
 
     @ui.refreshable
     def pagination(self):
@@ -95,7 +118,9 @@ class data_preview(ui.element):
         self.dialog = ui.dialog()
         with self.dialog:
             with ui.card().classes("p-0 overflow-scroll max-w-[95vw] max-h-[95vh]"):
-                self.zoomed = ui.image("").classes("h-[90vh] w-[90vh] object-contain")
+                self.zoomed = ui.element("div").classes(
+                    "h-[90vh] w-[90vh] object-contain"
+                )
                 self.modal_label = ui.row().classes(
                     "p-2 text-sm absolute bottom-0 left-0 bg-black bg-opacity-50 text-white w-full"
                 )

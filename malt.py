@@ -54,6 +54,10 @@ STATE = None
 # ==================== History Management ====================
 
 from components.embedder.hf_image_emb import embed_image  # noqa: E402
+from components.ui.previews.image_preview import (  # noqa: E402
+    make_image_detail_preview,
+    make_image_sample_preview,
+)
 
 # ==================== HALFSPACE Projection ====================
 # No active ingredients. Projection component is imported where needed.
@@ -111,6 +115,10 @@ from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
 from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
 from components.ui.info_chip import make_info_chip  # noqa: E402
 from components.ui.ternary_plot import ternary_plot  # noqa: E402
+
+# set up the right data_preview function
+data_preview.make_sample_preview = make_image_sample_preview  # type: ignore
+data_preview.make_detail_preview = make_image_detail_preview  # type: ignore
 
 
 async def handle_file_upload(state, dialog, e):

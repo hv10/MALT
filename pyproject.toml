@@ -19,6 +19,7 @@ dependencies = [
     "pywebview",
     "tables",
     "pyarrow",
+    "juliacall>=0.9.35",
 ]
 
 [project.scripts]
