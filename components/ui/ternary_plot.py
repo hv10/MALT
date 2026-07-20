@@ -15,10 +15,11 @@ def perpendicular_distance(x, y, x1, y1, x2, y2):
 
 
 def cart_to_tril(x, y):
-    x = np.clip(x, 0, 1)
-    y = np.clip(y, 0, np.sqrt(3) / 2)
-    A = (0, np.sqrt(3) / 2)
-    B = (1, np.sqrt(3) / 2)
+    SQRT3 = np.sqrt(3)
+    y = np.clip(y, 0, SQRT3 / 2)
+    x = np.clip(x, 0.5 - y / SQRT3, 0.5 + y / SQRT3)
+    A = (0, SQRT3 / 2)
+    B = (1, SQRT3 / 2)
     C = (0.5, 0)
 
     u = perpendicular_distance(x, y, C[0], C[1], B[0], B[1])
@@ -41,12 +42,12 @@ def svg_pointer_event(e, state, width=300, height=300):
         update_axis(state, e.args["layerX"] / width, e.args["layerY"] / height)
 
 
-@ui.refreshable
+# @ui.refreshable
 def ternary_plot(state):
     pos_xy = tril_to_cart(*state.META["axis"].values())
     width, height = 250, 250
     content = f"""
-        <svg viewBox="0 0 1 1" width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+        <svg id="ternary_plot_svg" viewBox="0 0 1 1" width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
             <path id="triangle" d="M0.5,0L0,0.8660254L1,0.8660254Z" fill="grey" fill-opacity="0.5" pointer-events="fill" />
             <line x1="0.5" y1="0" x2="0.5" y2="0.866025403784" stroke="darkgrey" stroke-width="0.01" />
             <line x1="0" y1="0.866025403784" x2="0.75" y2="0.433012701892" stroke="darkgrey" stroke-width="0.01" />
@@ -54,20 +55,33 @@ def ternary_plot(state):
             <circle cx="0.5" cy="0" r="0.02" fill="grey" />
             <circle cx="0" cy="0.866025403784" r="0.02" fill="grey" />
             <circle cx="1.0" cy="0.866025403784" r="0.02" fill="grey" />
+            <circle id="pos_move" cx="{pos_xy[0]}" cy="{pos_xy[1]}" r="0.02" fill="none" stroke="orange" stroke-width="0.01" />
             <circle id="pos" cx="{pos_xy[0]}" cy="{pos_xy[1]}" r="0.02" fill="orange" />
         </svg>"""
+    move_handler = f"""
+                    (e) => {{
+                        if (e.buttons !== 1) return;
+                        const mv_circle = document.querySelector("#ternary_plot_svg #pos_move");
+                        mv_circle.setAttribute("cx", e.layerX / {width});
+                        mv_circle.setAttribute("cy", e.layerY / {height});
+                    }}
+                    """
     with ui.column(align_items="center").classes("w-full"):
         with ui.row().classes("w-full"):
             plot = (
                 ui.interactive_image(size=(width, height), content=content)
                 .on(
-                    "pointermove",
-                    lambda e: svg_pointer_event(e, state, width, height),
-                )
-                .on(
                     "pointerdown",
                     lambda e: svg_pointer_event(e, state, width, height),
+                    throttle=0.06,
                 )
+                .on(
+                    "pointermove",
+                    lambda e: svg_pointer_event(e, state, width, height),
+                    throttle=0.06,
+                )
+                .on("pointerdown", js_handler=move_handler, throttle=0.033)
+                .on("pointermove", js_handler=move_handler, throttle=0.033)
                 .classes(f"w-[{width}px] h-[{height}px] m-auto")
             )
         with ui.row(align_items="baseline").classes("w-full"):
@@ -78,13 +92,13 @@ def ternary_plot(state):
             """)
             ui.label("Y= ").classes("text-lg")
             ui.label().bind_text_from(
-                state.META["axis"], "c", backward=lambda v: f"{v:.2f}·P₁ +"
+                state, ("META", "axis", "c"), backward=lambda v: f"{v:.2f}·P₁ +"
             )
             ui.label().bind_text_from(
-                state.META["axis"], "a", backward=lambda v: f"{v:.2f}·P₂ +"
+                state, ("META", "axis", "a"), backward=lambda v: f"{v:.2f}·P₂ +"
             )
             ui.label().bind_text_from(
-                state.META["axis"], "b", backward=lambda v: f"{v:.2f}·P₃"
+                state, ("META", "axis", "b"), backward=lambda v: f"{v:.2f}·P₃"
             )
             ui.button("reset", on_click=lambda: update_axis(state, 0.5, 0))
     return plot
@@ -99,7 +113,14 @@ def update_axis(state, x, y):
     P = cart_to_tril(x, y)
     P = P / np.sum(P)
     state.META["axis"] = {"a": P[0], "b": P[1], "c": P[2]}
-    ternary_plot.refresh(state)
+    xp, yp = tril_to_cart(*P)
+    ui.run_javascript(
+        f"""
+        const circle = document.querySelector("#ternary_plot_svg #pos");
+        circle.setAttribute("cx", {xp});
+        circle.setAttribute("cy", {yp});
+        """
+    )
     update_data_positions(
         state.DATA,
         *update_projection(
@@ -110,5 +131,4 @@ def update_axis(state, x, y):
             run_pca=False,
         ),
     )
-
     update_plot(state)

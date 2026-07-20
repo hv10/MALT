@@ -16,20 +16,49 @@ def ensure_hippo_env():
 
     juliapkg.resolve()
 
-def setup_embed_func():
+def setup_embed_func(seed=42, N=128, gamma=0.1):
+    """Sets up the embedding function using HiPPO.jl and returns it.
+    Args:
+        seed (int): Random seed for reproducibility.
+        N (int): Dimension of the HiPPO state.
+        gamma (float): Parameter for the HiPPO transition.
+    Returns:
+        embed_ts (jl.Callable): 
+            A julia-function that takes a time-series array and optionally 
+            the time-steps of the ts-array and returns its embedding.
+    """
     import os
     os.environ["PYTHON_JULIACALL_STARTUP_FILE"] = "no"
     os.environ["PYTHON_JULIACALL_OPTLEVEL"] = "3"
     from juliacall import Main as jl
 
-    # for now we magic-number this to keep around 10% of the time-series in the embedding
+    # for now we magic-number to keep around 10% of the time-series info in the embedding
     # and use a 128d state (compact representation)
 
     jl.seval("using HiPPO")
+    jl.seval("using Random, LinearAlgebra, Statistics")
+    jl.seval(f"""
+        # Setting up globals
+        const N = {N}
+        const seed = {seed}
+        rng = MersenneTwister(seed)
+        const W = randn(rng, Float32, N, N) 
+        const b = rand(rng, Float32, N) .* (2*pi)
+        const A,B = HiPPO.transition(:legs, N, HiPPO.get_gamma(Float32({gamma})))
+    """)
+    jl.seval("""
+        phi(x) = begin
+            x = x ./ max(norm(x,2), 1f-6) # normalize to common norm
+            res = Float32[]
+            for sigma in [sqrt(0.1f0), sqrt(0.5f0), 1.0f0]
+                x = ((W .* (1/sigma^2))* x .+ b)
+                append!(res, mean(x; dims=2))
+            end
+            return res
+        end
+    """)
     embed_ts = jl.seval("""
         function embed_ts(ts_arr; time_steps=Float32.(1:length(ts_arr)) ./ length(ts_arr))
-            N = 128
-            A,B = HiPPO.transition(:legs, N, HiPPO.get_gamma(0.1f0))
             # Convert the input array to a Julia array
             state = zeros(Float32, N, size(ts_arr, 2))
             ts_deltas = [time_steps[1]; diff(time_steps)]
@@ -38,7 +67,7 @@ def setup_embed_func():
                     state[:,c] = HiPPO.step(:tustin, A,B, state[:,c], v[c], Float32(i))
                 end
             end
-            return vec(state)
+            return vcat(phi(state)..., log(1+size(state, 2)))
         end
     """)
     return embed_ts
@@ -66,22 +95,28 @@ def embed_ts(filepath):
     """
     Embeds an time-series as a vector using HIPPO.jl.
     If file contains a single column, it is treated as a single time-series, with equal steps.
-    If file contains multiple columns, each column is treated as a separate time-series.
-    The first column is assumed to be the time-axis.
+    If file contains multiple columns, each column is treated as a separate variate of the time-series.
+    Note: In this case the first column is assumed to be the time-axis.
     """
     ts_arr = pd.read_csv(filepath, header=None).to_numpy()
     if ts_arr.shape[1] == 1:
-        embedding = load_hippo()(ts_arr)
+        embedding = load_hippo()(np.astype(ts_arr, np.float32))
     else:
         time_steps = minmax_scale(ts_arr[:, 0])
-        ts_data = ts_arr[:, 1:]
+        ts_data = np.astype(ts_arr[:, 1:], np.float32)
         embedding = load_hippo()(ts_data, time_steps=time_steps)
     return np.asarray(embedding)
 
 
 if __name__ == "__main__":
+    import time
     # Example usage
     ts_file = Path(__file__).parent / "example_timeseries.csv"  # Replace with your time-series file path
+    ref = time.time()
     embedding = embed_ts(ts_file)
+    print(f"Time taken (cold): {(time.time() - ref)/20:.3e} seconds")
+    ref = time.time()
+    for i in range(128):
+        embedding = embed_ts(ts_file)
+    print(f"Time taken (warm, avg): {(time.time() - ref)/128:.3e} seconds")
     print("Embedding shape:", embedding.shape)
-    print("Embedding:\n", embedding)

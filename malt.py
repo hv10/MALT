@@ -17,7 +17,6 @@
 #    "pyarrow",
 # ]
 # ///
-#     "nicegui==2.17.0",
 
 import argparse as ap
 import json
@@ -45,23 +44,11 @@ def timed(func):
     return wrapper
 
 
-# ==================== STATE Data ====================
-
+# ==================== STATE Mgmt ====================
 from components.state import State  # noqa: E402
 
 STATE = None
 
-# ==================== History Management ====================
-
-from components.embedder.hf_image_emb import embed_image  # noqa: E402
-from components.ui.previews.image_preview import (  # noqa: E402
-    make_image_detail_preview,
-    make_image_sample_preview,
-)
-
-# ==================== HALFSPACE Projection ====================
-# No active ingredients. Projection component is imported where needed.
-# ==================== Embedding & Huggingface ====================
 from components.embeddings import apply_emb_to_df  # noqa: E402
 from components.history import redo, undo  # noqa: E402
 from components.utils import (  # noqa: E402
@@ -70,10 +57,20 @@ from components.utils import (  # noqa: E402
     with_loading_overlay,
 )
 
-apply_emb_to_df.embed_func = embed_image  # type: ignore
 
-# ==================== PA Classifier ====================
-from components.data_mgmt import save_callback  # noqa: E402
+# =================== DATA Mgmt ====================
+from components.data_mgmt import (  # noqa: E402
+    save_callback,
+    add_cls_from_file,
+    add_new_cls,
+    clear_class_for_selected,
+    load_folder,
+    load_prior_state,
+    remove_class,
+    set_class_for_selected,
+)
+from components.pa_clf import update_pa_clf  # noqa: E402
+
 
 
 async def save_async_cb(state, btn, unique=False):
@@ -92,35 +89,30 @@ def remove_file(state, i):
     refresh(state)
 
 
-# ==================== DATA Mgmt ====================
-from components.data_mgmt import (  # noqa: E402
-    add_cls_from_file,
-    add_new_cls,
-    clear_class_for_selected,
-    load_folder,
-    load_prior_state,
-    remove_class,
-    set_class_for_selected,
-)
-from components.pa_clf import update_pa_clf  # noqa: E402
-from components.ui.class_hist import class_hist  # noqa: E402
-from components.ui.data_preview import data_preview  # noqa: E402
-from components.ui.data_table import data_table, update_data_table  # noqa: E402
-
-# ==================== GUI ====================
-# Load UI Components
+# ==================== GUI-Components ====================
 from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
 
-# from components.projection import update_projection  # noqa: E402
 from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
 from components.ui.info_chip import make_info_chip  # noqa: E402
 from components.ui.ternary_plot import ternary_plot  # noqa: E402
 
-# set up the right data_preview function
+from components.ui.class_hist import class_hist  # noqa: E402
+from components.ui.data_preview import data_preview  # noqa: E402
+from components.ui.data_table import data_table, update_data_table  # noqa: E402
+
+# ==================== Embedder + Preview Functions ====================
+from components.embedder.hf_image_emb import embed_image  # noqa: E402
+from components.ui.previews.image_preview import (  # noqa: E402
+    make_image_detail_preview,
+    make_image_sample_preview,
+)
+
+apply_emb_to_df.embed_func = embed_image  # type: ignore
 data_preview.make_sample_preview = make_image_sample_preview  # type: ignore
 data_preview.make_detail_preview = make_image_detail_preview  # type: ignore
 
 
+# =================== GUI-Setup ====================
 async def handle_file_upload(state, dialog, e):
     content = await e.file.text()
     add_cls_from_file(state, content)
