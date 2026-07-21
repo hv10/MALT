@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def prediction_viz(pred_arr, state, all=False):
     if len(pred_arr) == 0:
         ui.label("No predictions").classes("italic")
@@ -18,9 +19,7 @@ def prediction_viz(pred_arr, state, all=False):
                     "min": min(-1, min(pred_arr)),
                     "max": max(1, max(pred_arr)),
                 },
-                "series": [
-                    {"data": pred_arr, "type": "bar", "color": pred_arr}
-                ],
+                "series": [{"data": pred_arr, "type": "bar", "color": pred_arr}],
                 "grid": {"left": 0, "top": 0, "right": 0, "bottom": 0},
                 "visualMap": {
                     "show": False,

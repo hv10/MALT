@@ -1,30 +1,13 @@
-#!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#    "scikit-learn>=1.8,<2",
-#    "transformers[torch]>=5.7,<6",
-#    "torchvision==0.26.0",
-#    "matplotlib>=3.10,<4",
-#    "tqdm<5",
-#    "pillow>=12.2,<13",
-#    "numpy",
-#    "pandas>=3.0,<4",
-#    "nicegui>=3,<4",
-#    "plotly>=6.7,<7",
-#    "pywebview",
-#    "tables",
-#    "pyarrow",
-# ]
-# ///
-
 import argparse as ap
+import importlib.util
 import json
 import logging
+import tomllib
 from functools import partial, wraps
 from pathlib import Path
 from time import perf_counter
 
+import matplotlib.pyplot as plt
 import plotly.io as pio
 from nicegui import ElementFilter, app, binding, run, ui
 from tqdm import tqdm
@@ -44,33 +27,38 @@ def timed(func):
     return wrapper
 
 
+def load_function(file_path, function_name):
+    spec = importlib.util.spec_from_file_location("dynamic_module", file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return getattr(module, function_name)
+
+
 # ==================== STATE Mgmt ====================
 from components.state import State  # noqa: E402
 
 STATE = None
 
-from components.embeddings import apply_emb_to_df  # noqa: E402
-from components.history import redo, undo  # noqa: E402
-from components.utils import (  # noqa: E402
-    refresh,
-    register_refresh,
-    with_loading_overlay,
-)
-
-
 # =================== DATA Mgmt ====================
 from components.data_mgmt import (  # noqa: E402
-    save_callback,
     add_cls_from_file,
     add_new_cls,
     clear_class_for_selected,
     load_folder,
     load_prior_state,
     remove_class,
+    save_callback,
     set_class_for_selected,
 )
+from components.embeddings import apply_emb_to_df  # noqa: E402
+from components.history import redo, undo  # noqa: E402
 from components.pa_clf import update_pa_clf  # noqa: E402
-
+from components.utils import (  # noqa: E402
+    refresh,
+    register_refresh,
+    with_loading_overlay,
+)
 
 
 async def save_async_cb(state, btn, unique=False):
@@ -90,26 +78,13 @@ def remove_file(state, i):
 
 
 # ==================== GUI-Components ====================
-from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
-
-from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
-from components.ui.info_chip import make_info_chip  # noqa: E402
-from components.ui.ternary_plot import ternary_plot  # noqa: E402
-
 from components.ui.class_hist import class_hist  # noqa: E402
 from components.ui.data_preview import data_preview  # noqa: E402
 from components.ui.data_table import data_table, update_data_table  # noqa: E402
-
-# ==================== Embedder + Preview Functions ====================
-from components.embedder.hf_image_emb import embed_image  # noqa: E402
-from components.ui.previews.image_preview import (  # noqa: E402
-    make_image_detail_preview,
-    make_image_sample_preview,
-)
-
-apply_emb_to_df.embed_func = embed_image  # type: ignore
-data_preview.make_sample_preview = make_image_sample_preview  # type: ignore
-data_preview.make_detail_preview = make_image_detail_preview  # type: ignore
+from components.ui.emb_plot import emb_plot, update_plot  # noqa: E402
+from components.ui.force_sim_plot import force_similarity_plot  # noqa: E402
+from components.ui.info_chip import make_info_chip  # noqa: E402
+from components.ui.ternary_plot import ternary_plot  # noqa: E402
 
 
 # =================== GUI-Setup ====================
@@ -166,7 +141,11 @@ def plot_controls(state):
                 ui.slider(min=-1, max=1, step=0.05).bind_value(
                     state, "CLS_THRESHOLD"
                 ).props("label-always marker switch-label-side").classes("w-full")
-                ui.toggle(["MIN_MARGIN", "PROJECTION"]).bind_value(state, "CLS_TYPE")
+                with ui.row().classes("w-full"):
+                    ui.toggle(["MIN_MARGIN", "PROJECTION"]).bind_value(
+                        state, "CLS_TYPE"
+                    )
+                    ui.checkbox("single class pred.").bind_value(state, "CLS_ARGMAX")
         ui.separator()
     with ui.row(align_items="center").classes("w-full"):
         ternary_plot(state)
@@ -244,7 +223,7 @@ def make_overlay():
 
 def progress_info(state):
     def get_progress(d):
-        return d["annot"].value_counts().get("h", 0) / len(d)
+        return d["annot"].value_counts().get("h", 0) / len(d) if len(d) > 0 else 0
 
     with ui.row(wrap=False).classes("w-fit items-center"):
         ui.slider(min=0, max=1).bind_value_from(
@@ -265,6 +244,7 @@ def make_gui(state):
     if state.THEME == "dark":
         ui.dark_mode().enable()
         pio.templates.default = "plotly_dark"
+        plt.style.use("dark_background")
     ui.add_css("body.loading, body.loading * { cursor: wait !important; }")
     app.add_static_files("/samples", state.OUT_DIR)
     with ui.grid(columns="3fr 7fr").classes("w-full"):
@@ -335,14 +315,28 @@ def make_gui(state):
     ui.keyboard(on_key=global_handle_key)
 
 
+def apply_build_cfg(state):
+    build_cfg = state.META["cfg"]
+    apply_emb_to_df.embed_func = load_function(  # type: ignore
+        build_cfg["embeddings"]["file"], build_cfg["embeddings"]["emb_func"]
+    )
+    data_preview.make_sample_preview = load_function(  # type: ignore
+        build_cfg["sample_preview"]["file"], build_cfg["sample_preview"]["sample_func"]
+    )
+    data_preview.make_detail_preview = load_function(  # type: ignore
+        build_cfg["sample_preview"]["file"], build_cfg["sample_preview"]["detail_func"]
+    )
+    state.PREVIEW_FUNC = data_preview.make_sample_preview
+
+
 # ==================== MAIN ====================
-def setup_state(model, directory, color_blind, prior, theme, task):
+def setup_state(cfg, directory, color_blind, prepare, theme, task):
     global STATE
 
     if STATE is None:
         state = State()
         # setup model for embedding
-        state.META["model"] = model
+        state.META["cfg"] = tomllib.load(open(cfg, "rb"))
         state.COLORBLIND = color_blind
         state.THEME = theme
         if task == "multilabel":
@@ -351,9 +345,8 @@ def setup_state(model, directory, color_blind, prior, theme, task):
         if not directory.is_dir():
             directory = directory.parent
         state.OUT_DIR = directory.resolve().absolute()
-        if not prior:
-            # load_model(state, model)
-            print("Model Loaded")
+        if prepare:
+            apply_build_cfg(state)
             load_folder(state, directory)
         print("OUTDIR:", state.OUT_DIR)
         STATE = state
@@ -377,15 +370,32 @@ def global_handle_key(e):
 async def select_page():
     global prior_path, STATE
     opts = sorted(list(STATE.OUT_DIR.glob("*.malt")))
+    with_loading_overlay.overlay = make_overlay()  # type: ignore
 
     if not opts:
-        ui.notify("No state files found.")
+        with ui.card().classes("absolute-center"):
+            with ui.row():
+                ui.icon("rocket_launch").classes("text-5xl")
+                ui.label("MALT").classes("text-5xl")
+            ui.label("No state files found.").classes("text-h4")
+            ui.markdown(
+                "Please prepare the data first by running malt with the `--prepare` flag and a valid `build.toml`."
+            ).classes("text-md")
+            ui.label("Default build configuration:").classes("text-h6")
+            ui.code(
+                (open(Path(__file__).parent / "build.toml", "r")).read(),
+                language="toml",
+            )
+            ui.label("Found in: " + str(Path(__file__).parent / "build.toml")).classes(
+                "text-sm"
+            )
         return
 
     if len(opts) == 1:
         o = opts[0]
         prior_path = o
         load_prior_state(STATE, o)
+        apply_build_cfg(STATE)
         ui.page_title("MALT")
         ui.navigate.to("/")
         return
@@ -394,10 +404,12 @@ async def select_page():
         ui.label("Select a state to load:").classes("text-h6")
         for opt in opts:
 
+            @with_loading_overlay
             def choose(o=opt):
                 global prior_path
                 prior_path = o
                 load_prior_state(STATE, prior_path)
+                apply_build_cfg(STATE)
                 ui.page_title(f"MALT - {o.stem}")
                 ui.navigate.to("/")
 
@@ -422,19 +434,18 @@ async def index():
 # Needs to be unguarded to work.
 parser = ap.ArgumentParser()
 parser.add_argument(
-    "--model",
-    default="microsoft/resnet-50",
-    help="Which model to use for embedding.",
+    "--cfg",
+    default=Path(__file__).parent / "build.toml",
+    help="Which build configuration to use (default: build.toml)",
 )
 parser.add_argument(
     "-t",
     "--task",
-    choices=["classification", "regression", "multilabel"],
+    choices=["classification", "multilabel"],
     default="classification",
 )
 parser.add_argument("-d", "--directory", type=Path, default=Path.cwd())
 parser.add_argument("--color-blind", action="store_true")
-parser.add_argument("--prior", action="store_true")
 parser.add_argument("--theme", choices=["dark", "light"], default="dark")
 parser.add_argument(
     "--prepare", action="store_true", help="Run data preparation, save and exit."
@@ -443,10 +454,10 @@ args = parser.parse_args()
 
 setup_cb = partial(
     setup_state,
-    args.model,
+    args.cfg,
     args.directory,
     args.color_blind,
-    args.prior,
+    args.prepare,
     args.theme,
     args.task,
 )

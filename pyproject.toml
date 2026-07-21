@@ -20,6 +20,7 @@ dependencies = [
     "tables",
     "pyarrow",
     "juliacall>=0.9.35",
+    "rootpath>=0.1.1",
 ]
 
 [project.scripts]

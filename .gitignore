@@ -222,3 +222,4 @@ __marimo__/
 data/*
 uv.lock
 .llm-wiki/*
+_research/*

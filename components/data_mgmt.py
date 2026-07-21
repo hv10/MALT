@@ -1,8 +1,10 @@
 import ast
 import json
 import tempfile
+import tomllib
 import zipfile
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,6 +12,7 @@ from nicegui import ui
 
 from .embeddings import apply_emb_to_df
 from .history import push_undo, undoable
+from .projection import dir_of_max_variance, project_and_remove_direction
 from .state import State
 from .utils import refresh, with_loading_overlay
 
@@ -29,11 +32,11 @@ def update_data_cls(df, indices, y_hat):
 
 
 def load_folder(state, folder_pth):
-    print(f"Loading Images from: {folder_pth}")
+    print(f"Loading Data from: {folder_pth}")
     file_paths = (
         p.resolve().relative_to(state.OUT_DIR)
         for p in folder_pth.glob("*")
-        if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
+        if p.suffix.lower() in state.META["cfg"]["embeddings"]["file_types"]
     )
     for pth in file_paths:
         state.DATA.loc[len(state.DATA.index)] = State.NEW_ROW(pth)
@@ -41,6 +44,12 @@ def load_folder(state, folder_pth):
         state.DATA = apply_emb_to_df(state.OUT_DIR, state.DATA)
         data_x, data_y = initialize_pos(state.DATA)
         state.DATA = update_data_positions(state.DATA, data_x, data_y)
+
+
+def load_build_cfg(state, cfg):
+    if cfg is None:
+        cfg = tomllib.load(open(Path(__file__).parent / "build.toml", "rb"))
+    state.META["cfg"] = cfg
 
 
 def safe_load_cls(val):
@@ -73,6 +82,7 @@ def load_prior_state(state, state_pth):
         state.DATA = pd.merge(data_loaded, emb_loaded)
         with zipf.open("meta.json") as fp:
             state.META = state.META | json.load(fp)
+            load_build_cfg(state, state.META.get("cfg", None))
             print(state.META["classes"])
     print(state.DATA.info())
     print(state.DATA.head())

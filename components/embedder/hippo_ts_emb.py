@@ -1,7 +1,12 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-import tomllib
+
+import rootpath
+rootpath.append()
+
+from components.utils import has_header
 
 
 def ensure_hippo_env():
@@ -16,6 +21,7 @@ def ensure_hippo_env():
 
     juliapkg.resolve()
 
+
 def setup_embed_func(seed=42, N=128, gamma=0.1):
     """Sets up the embedding function using HiPPO.jl and returns it.
     Args:
@@ -23,11 +29,12 @@ def setup_embed_func(seed=42, N=128, gamma=0.1):
         N (int): Dimension of the HiPPO state.
         gamma (float): Parameter for the HiPPO transition.
     Returns:
-        embed_ts (jl.Callable): 
-            A julia-function that takes a time-series array and optionally 
+        embed_ts (jl.Callable):
+            A julia-function that takes a time-series array and optionally
             the time-steps of the ts-array and returns its embedding.
     """
     import os
+
     os.environ["PYTHON_JULIACALL_STARTUP_FILE"] = "no"
     os.environ["PYTHON_JULIACALL_OPTLEVEL"] = "3"
     from juliacall import Main as jl
@@ -43,15 +50,16 @@ def setup_embed_func(seed=42, N=128, gamma=0.1):
         const seed = {seed}
         rng = MersenneTwister(seed)
         const W = randn(rng, Float32, N, N) 
-        const b = rand(rng, Float32, N) .* (2*pi)
+        const b = rand(rng, Float32, N) .* (2f0*Float32(pi))
         const A,B = HiPPO.transition(:legs, N, HiPPO.get_gamma(Float32({gamma})))
     """)
     jl.seval("""
         phi(x) = begin
-            x = x ./ max(norm(x,2), 1f-6) # normalize to common norm
+            col_norms = sqrt.(sum(abs2, x; dims=1))
+            x = x ./ max.(col_norms, 1f-6) # normalize to common norm, while controlling for numerical stability
             res = Float32[]
             for sigma in [sqrt(0.1f0), sqrt(0.5f0), 1.0f0]
-                x = ((W .* (1/sigma^2))* x .+ b)
+                x = cos.((W ./ sigma) * x .+ b)
                 append!(res, mean(x; dims=2))
             end
             return res
@@ -67,7 +75,12 @@ def setup_embed_func(seed=42, N=128, gamma=0.1):
                     state[:,c] = HiPPO.step(:tustin, A,B, state[:,c], v[c], Float32(i))
                 end
             end
-            return vcat(phi(state)..., log(1+size(state, 2)))
+            # summary features
+            col_norms = sqrt.(sum(abs2, state; dims=1))
+            amplitudes = log1p.(col_norms)
+            mean_amplitude = tanh(mean(amplitudes) / 5f0)
+            col_count = log1p(Float32(size(state, 2)))
+            return vcat(phi(state)..., mean_amplitude, col_count)
         end
     """)
     return embed_ts
@@ -91,6 +104,7 @@ def minmax_scale(arr):
         return np.zeros_like(arr)  # Avoid division by zero
     return (arr - min_val) / (max_val - min_val)
 
+
 def embed_ts(filepath):
     """
     Embeds an time-series as a vector using HIPPO.jl.
@@ -98,7 +112,7 @@ def embed_ts(filepath):
     If file contains multiple columns, each column is treated as a separate variate of the time-series.
     Note: In this case the first column is assumed to be the time-axis.
     """
-    ts_arr = pd.read_csv(filepath, header=None).to_numpy()
+    ts_arr = pd.read_csv(filepath, header=has_header(filepath)).to_numpy()
     if ts_arr.shape[1] == 1:
         embedding = load_hippo()(np.astype(ts_arr, np.float32))
     else:
@@ -110,13 +124,16 @@ def embed_ts(filepath):
 
 if __name__ == "__main__":
     import time
+
     # Example usage
-    ts_file = Path(__file__).parent / "example_timeseries.csv"  # Replace with your time-series file path
+    ts_file = (
+        Path(__file__).parent / "example_timeseries.csv"
+    )  # Replace with your time-series file path
     ref = time.time()
     embedding = embed_ts(ts_file)
-    print(f"Time taken (cold): {(time.time() - ref)/20:.3e} seconds")
+    print(f"Time taken (cold): {(time.time() - ref) / 20:.3e} seconds")
     ref = time.time()
     for i in range(128):
         embedding = embed_ts(ts_file)
-    print(f"Time taken (warm, avg): {(time.time() - ref)/128:.3e} seconds")
+    print(f"Time taken (warm, avg): {(time.time() - ref) / 128:.3e} seconds")
     print("Embedding shape:", embedding.shape)

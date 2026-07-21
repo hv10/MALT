@@ -78,11 +78,11 @@ def update_projection(state, coeffs, intercepts, project_X=True, run_pca=True):
     if project_X:
         X = np.stack(state.DATA["emb"])
         if state.CLS_TYPE == "MIN_MARGIN":
-            coeffs_mat = np.array(coeffs)  # (k, d)
-            norms = np.linalg.norm(coeffs_mat, axis=1, keepdims=True)  # (k, 1)
+            coeffs_mat = np.array(coeffs)  # (labels, d)
+            norms = np.linalg.norm(coeffs_mat, axis=1, keepdims=True)  # (labels, 1)
             px = np.transpose(
                 (X @ coeffs_mat.T + np.array(intercepts)) / norms.T
-            )  # (k, n) in one BLAS call
+            )  # (labels, samples) in one BLAS call
             min_idx = np.argmin(np.abs(px), axis=0)
             pos_x = px[min_idx, np.arange(px.shape[1])]
         else:  # PROJECTION

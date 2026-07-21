@@ -1,9 +1,11 @@
 from functools import partial
+
+import pandas as pd
+import plotly.express as px
+from nicegui import html, ui
+
 from components.pa_clf import get_sample_prediction
 from components.ui.prediction_viz import prediction_viz
-import plotly.express as px
-import pandas as pd
-from nicegui import ui, html
 
 from ..state import update_selected_rows
 from ..utils import format_cls_label, with_loading_overlay
@@ -88,11 +90,11 @@ def make_emb_plot(state):
     return fig
 
 
-def make_hover_sample_prev(el, point):
+def make_hover_sample_prev(el, point, state):
     el.clear()
     with el:
-        el.classes("bg-amber-500")
-        ui.image("/samples/" + point["customdata"][0]).classes("w-full h-auto")
+        el.classes("border-white")
+        state.PREVIEW_FUNC(el, str(state.OUT_DIR / point["customdata"][0]))
     el.props("style='opacity:1;'")  # position near cursor
 
 
@@ -168,7 +170,7 @@ def emb_plot(state):
     plt.on("plotly_deselect", lambda: update_selected_rows(state, []))
     plt.on(
         "plotly_hover",
-        lambda e: (make_hover_sample_prev(hover_prev_div, e.args["points"][0]),),
+        lambda e: make_hover_sample_prev(hover_prev_div, e.args["points"][0], state),
     )
     plt.on(
         "plotly_hover",

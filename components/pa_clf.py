@@ -96,6 +96,11 @@ def update_pa_clf(state, sel_cls):
         preds > state.CLS_THRESHOLD
     )  # this should probably guard against multilabel
     no_pred = np.sum(binary_preds, axis=1) == 0
+    if state.CLS_ARGMAX:
+        indices = np.argmax(binary_preds * preds, axis=1)
+        mask = np.zeros_like(binary_preds, dtype=bool)
+        mask[np.arange(len(binary_preds)), indices] = True
+        binary_preds[~mask] = 0
     binary_preds = binary_preds[~no_pred & ~h_annot]
     state.DATA = update_data_cls(
         state.DATA,
@@ -104,10 +109,11 @@ def update_pa_clf(state, sel_cls):
     )
     refresh(state)
 
+
 def get_sample_prediction(state, idx):
-    preds = getattr(state,"PREDS",[])
+    preds = getattr(state, "PREDS", [])
     if len(preds) == 0:
         return []
-    if isinstance(idx,str):
+    if isinstance(idx, str):
         idx = state.DATA.index[state.DATA["fpth"] == idx][0]
     return preds[idx]

@@ -1,7 +1,8 @@
-from components.pa_clf import get_sample_prediction
-from components.ui.prediction_viz import prediction_viz
 import numpy as np
 from nicegui import binding, ui
+
+from components.pa_clf import get_sample_prediction
+from components.ui.prediction_viz import prediction_viz
 
 from ..utils import format_cls_label, with_loading_overlay
 
@@ -49,6 +50,7 @@ class data_preview(ui.element):
         with ui.label(el[0]).classes("font-bold"):
             ui.tooltip(el[0])
         with ui.label(str(el[1])):
+            ui.icon("o_info").classes("p-1")
             with ui.tooltip().classes("w-48 h-auto bg-white text-black"):
                 prediction_viz(
                     get_sample_prediction(self.state_ref, el[0]),

@@ -1,5 +1,5 @@
 import pandas as pd
-import tqdm
+from tqdm import tqdm
 
 
 def apply_emb_to_df(out_dir, df):

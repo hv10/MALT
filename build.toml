@@ -1,0 +1,8 @@
+[embeddings]
+file     = "components/embedder/hf_image_emb.py"
+emb_func = "embed_image"
+
+[sample_preview]
+file        = "components/ui/previews/image_preview.py"
+detail_func = "make_image_detail_preview"
+sample_func = "make_image_sample_preview"

@@ -15,7 +15,7 @@ class State:
     PCA_MODEL = None
     META = {
         "classes": [],
-        "model": None,
+        "cfg": None,
         "axis": {"a": 0, "b": 0, "c": 1},
         "multilabel": False,
         "note": "",
@@ -31,12 +31,14 @@ class State:
     TABLE = None
     CLS_THRESHOLD = 0.0
     CLS_TYPE = "MIN_MARGIN"  # options: "MIN_MARGIN", "PROJECTION"
+    CLS_ARGMAX = False
     HIDE_LABELED = False
     ADD_LABELS = True
     # History Management
     UNDO_STACK = []
     REDO_STACK = []
     MAX_HISTORY = 50
+    PREVIEW_FUNC = None
 
 
 def _snapshot(state):

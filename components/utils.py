@@ -1,6 +1,27 @@
+import csv
 from functools import wraps
 
 from nicegui import app
+
+
+def is_number(s):
+    try:
+        float(s)
+    except ValueError:  # Failed
+        return False
+    else:  # Succeeded
+        return True
+
+
+def has_header(path, sep=","):
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        if any(
+            value.strip().lower() != "nan" and not is_number(value)
+            for value in next(csv.reader(f, delimiter=sep))
+        ):
+            return 1
+        else:
+            return None
 
 
 def with_loading_overlay(func):
