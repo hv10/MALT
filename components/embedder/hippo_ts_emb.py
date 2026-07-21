@@ -120,20 +120,3 @@ def embed_ts(filepath):
         ts_data = np.astype(ts_arr[:, 1:], np.float32)
         embedding = load_hippo()(ts_data, time_steps=time_steps)
     return np.asarray(embedding)
-
-
-if __name__ == "__main__":
-    import time
-
-    # Example usage
-    ts_file = (
-        Path(__file__).parent / "example_timeseries.csv"
-    )  # Replace with your time-series file path
-    ref = time.time()
-    embedding = embed_ts(ts_file)
-    print(f"Time taken (cold): {(time.time() - ref) / 20:.3e} seconds")
-    ref = time.time()
-    for i in range(128):
-        embedding = embed_ts(ts_file)
-    print(f"Time taken (warm, avg): {(time.time() - ref) / 128:.3e} seconds")
-    print("Embedding shape:", embedding.shape)
