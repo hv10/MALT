@@ -1,10 +1,36 @@
+# ==================== ARGPARSE ====================
+# minimal imports for argparse
 import argparse as ap
+from pathlib import Path
+
+# Needs to be unguarded to work.
+parser = ap.ArgumentParser(prog="malt")
+parser.add_argument(
+    "--cfg",
+    default=Path(__file__).parent / "build.toml",
+    help="Which build configuration to use (default: build.toml)",
+)
+parser.add_argument(
+    "-t",
+    "--task",
+    choices=["classification", "multilabel"],
+    default="classification",
+)
+parser.add_argument("-d", "--directory", type=Path, default=Path.cwd())
+parser.add_argument("--color-blind", action="store_true")
+parser.add_argument("--theme", choices=["dark", "light"], default="dark")
+parser.add_argument(
+    "--prepare", action="store_true", help="Run data preparation, save and exit."
+)
+args = parser.parse_args()
+
+# ==================== IMPORTS ====================
 import importlib.util
 import json
 import logging
+import os
 import tomllib
 from functools import partial, wraps
-from pathlib import Path
 from time import perf_counter
 
 import matplotlib.pyplot as plt
@@ -307,6 +333,7 @@ def make_gui(state):
         elements=[
             update_plot,
             update_data_table,
+            label_controls.refresh,
             force_similarity_plot.refresh,
             class_hist.refresh,
             dprv.refresh,
@@ -372,11 +399,20 @@ async def select_page():
     opts = sorted(list(STATE.OUT_DIR.glob("*.malt")))
     with_loading_overlay.overlay = make_overlay()  # type: ignore
 
-    if not opts:
-        with ui.card().classes("absolute-center"):
-            with ui.row():
-                ui.icon("rocket_launch").classes("text-5xl")
-                ui.label("MALT").classes("text-5xl")
+    if len(opts) == 1:
+        o = opts[0]
+        prior_path = o
+        load_prior_state(STATE, o)
+        apply_build_cfg(STATE)
+        ui.page_title("MALT")
+        ui.navigate.to("/")
+        return
+
+    with ui.card().classes("absolute-center"):
+        with ui.row():
+            ui.icon("rocket_launch").classes("text-5xl")
+            ui.label("MALT").classes("text-5xl")
+        if not opts:
             ui.label("No state files found.").classes("text-h4")
             ui.markdown(
                 "Please prepare the data first by running malt with the `--prepare` flag and a valid `build.toml`."
@@ -389,34 +425,25 @@ async def select_page():
             ui.label("Found in: " + str(Path(__file__).parent / "build.toml")).classes(
                 "text-sm"
             )
-        return
+        else:
+            ui.label("Select a state to load:").classes("text-h6")
+            for opt in opts:
 
-    if len(opts) == 1:
-        o = opts[0]
-        prior_path = o
-        load_prior_state(STATE, o)
-        apply_build_cfg(STATE)
-        ui.page_title("MALT")
-        ui.navigate.to("/")
-        return
+                @with_loading_overlay
+                def choose(o=opt):
+                    global prior_path
+                    prior_path = o
+                    load_prior_state(STATE, prior_path)
+                    apply_build_cfg(STATE)
+                    ui.page_title(f"MALT - {o.stem}")
+                    ui.navigate.to("/")
 
-    with ui.card().classes("absolute-center"):
-        ui.label("Select a state to load:").classes("text-h6")
-        for opt in opts:
-
-            @with_loading_overlay
-            def choose(o=opt):
-                global prior_path
-                prior_path = o
-                load_prior_state(STATE, prior_path)
-                apply_build_cfg(STATE)
-                ui.page_title(f"MALT - {o.stem}")
-                ui.navigate.to("/")
-
-            with (
-                ui.button(on_click=choose).props("flat").classes("w-full justify-start")
-            ):
-                ui.label(opt.stem).classes("text-left w-full")
+                with (
+                    ui.button(on_click=choose)
+                    .props("flat")
+                    .classes("w-full justify-start")
+                ):
+                    ui.label(opt.stem).classes("text-left w-full")
 
 
 prior_path = None
@@ -431,27 +458,8 @@ async def index():
     make_gui(STATE)
 
 
-# Needs to be unguarded to work.
-parser = ap.ArgumentParser()
-parser.add_argument(
-    "--cfg",
-    default=Path(__file__).parent / "build.toml",
-    help="Which build configuration to use (default: build.toml)",
-)
-parser.add_argument(
-    "-t",
-    "--task",
-    choices=["classification", "multilabel"],
-    default="classification",
-)
-parser.add_argument("-d", "--directory", type=Path, default=Path.cwd())
-parser.add_argument("--color-blind", action="store_true")
-parser.add_argument("--theme", choices=["dark", "light"], default="dark")
-parser.add_argument(
-    "--prepare", action="store_true", help="Run data preparation, save and exit."
-)
-args = parser.parse_args()
-
+# ==================== RUN MALT ====================
+# Note: Assumes that the argument-parser in the beginning of the file has parsed into args.
 setup_cb = partial(
     setup_state,
     args.cfg,
@@ -462,7 +470,6 @@ setup_cb = partial(
     args.task,
 )
 
-app.on_startup(setup_cb)
 
 if args.prepare:
     setup_cb()
@@ -470,11 +477,12 @@ if args.prepare:
     print("Data prepared and saved. Exiting.")
     exit(0)
 
+app.on_startup(setup_cb)
 ui.run(
     index,
     native=False,
     favicon="🚀",
     title="MALT",
-    reload=True,
+    reload=os.environ.get("MALT_RELOAD", "1") == "1",
     show_welcome_message=False,
 )  # set reload to False for prod

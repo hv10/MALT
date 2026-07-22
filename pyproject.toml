@@ -21,10 +21,12 @@ dependencies = [
     "pyarrow",
     "juliacall>=0.9.35",
     "rootpath>=0.1.1",
+    "click>=8.4.0",
 ]
 
 [project.scripts]
 malt = "entry:main"
+tool = "entry:tool"
 
 [build-system]
 requires      = ["hatchling"]
