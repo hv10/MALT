@@ -1,6 +1,7 @@
 import pandas as pd
-from nicegui import ui
 import rootpath
+from nicegui import ui
+
 rootpath.append()
 
 from components.utils import has_header

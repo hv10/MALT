@@ -41,7 +41,7 @@ def load_folder(state, folder_pth):
     for pth in file_paths:
         state.DATA.loc[len(state.DATA.index)] = State.NEW_ROW(pth)
     if not state.DATA.empty:
-        state.DATA = apply_emb_to_df(state.OUT_DIR, state.DATA)
+        state.DATA = apply_emb_to_df(state.OUT_DIR, state.DATA, state)
         data_x, data_y = initialize_pos(state.DATA)
         state.DATA = update_data_positions(state.DATA, data_x, data_y)
 

@@ -2,7 +2,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def apply_emb_to_df(out_dir, df):
+def apply_emb_to_df(out_dir, df, state=None):
     embed_func = getattr(apply_emb_to_df, "embed_func", None)
     if embed_func is None:
         raise ValueError(
@@ -12,7 +12,7 @@ def apply_emb_to_df(out_dir, df):
     tqdm.pandas(desc="Embedding Samples")
 
     def helper(row):
-        row["emb"] = embed_func(out_dir / row["fpth"])
+        row["emb"] = embed_func(out_dir / row["fpth"], state=state)
         return row
 
     return df.progress_apply(helper, axis=1)

@@ -14,7 +14,7 @@ def load_model(model_name="microsoft/resnet50"):
     return load_model.model  # type: ignore
 
 
-def embed_image(filepath):
+def embed_image(filepath, state=None):
     """
     Embeds an image as a vector using a Hugging Face model specified by its name.
     """

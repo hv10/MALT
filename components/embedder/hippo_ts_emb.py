@@ -2,8 +2,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 import rootpath
+
 rootpath.append()
 
 from components.utils import has_header
@@ -105,7 +105,7 @@ def minmax_scale(arr):
     return (arr - min_val) / (max_val - min_val)
 
 
-def embed_ts(filepath):
+def embed_ts(filepath, state=None):
     """
     Embeds an time-series as a vector using HIPPO.jl.
     If file contains a single column, it is treated as a single time-series, with equal steps.
