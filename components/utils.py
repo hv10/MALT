@@ -1,6 +1,8 @@
 import csv
 from functools import wraps
 from pathlib import Path
+import zipfile
+import tempfile
 
 from nicegui import app
 
@@ -48,6 +50,18 @@ def load_table(source, **kwargs):
 
         case _:
             raise ValueError(f"Unsupported file type: {suffix}")
+
+def load_labels(source):
+    import pandas as pd
+    with zipfile.ZipFile(source, "r") as zipf:
+        with zipf.open("data.parquet") as f:
+            with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
+                tmp.write(f.read())
+                tmp.flush()
+                data = pd.read_parquet(
+                    tmp.name
+                )  # , converters={"cls": safe_load_cls})
+                return data[["fpth", "cls"]]
 
 def with_loading_overlay(func):
     debounce = {"timer": None}

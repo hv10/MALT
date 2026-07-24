@@ -67,11 +67,11 @@ def _resolve_patch_path(
 
 
 def _find_first_image(
-    fpaths: pd.Series,
+    fpths: pd.Series,
     image_folder: Path,
 ) -> tuple[int, int]:
-    for fpath in fpaths:
-        candidate = _resolve_patch_path(fpath, image_folder)
+    for fpth in fpths:
+        candidate = _resolve_patch_path(fpth, image_folder)
         if not candidate.is_file():
             continue
 
@@ -83,7 +83,7 @@ def _find_first_image(
             continue
 
     raise FileNotFoundError(
-        "None of the paths in df['fpath'] could be opened as an image "
+        "None of the paths in df['fpth'] could be opened as an image "
         f"inside {image_folder}"
     )
 
@@ -172,7 +172,7 @@ def soft_label(
 
     Expected dataframe columns
     --------------------------
-    fpath:
+    fpth:
         Patch filename or relative path.
     cls:
         Categorical class value.
@@ -191,7 +191,7 @@ def soft_label(
     Parameters
     ----------
     df:
-        Input dataframe.
+        Input dataframe. Has to have at least columns ["fpth","cls"]
     dest:
         Output file or directory. If it is a directory, the output is saved as
         ``combined.png``.
@@ -217,7 +217,7 @@ def soft_label(
         A copy of the dataframe containing the additional columns
         ``patch_x``, ``patch_y``, ``overlap_x``, and ``overlap_y``.
     """
-    required_columns = {"fpath", "cls"}
+    required_columns = {"fpth", "cls"}
     missing_columns = required_columns - set(df.columns)
 
     if missing_columns:
@@ -234,6 +234,8 @@ def soft_label(
 
     if gauss < 0:
         raise ValueError(f"gauss must be non-negative, got {gauss}")
+    
+    df["cls"] = df["cls"].apply(str)
 
     pattern = (
         re.compile(fpattern)
@@ -243,7 +245,7 @@ def soft_label(
 
     result = df.copy()
 
-    parsed = result["fpath"].map(
+    parsed = result["fpth"].map(
         lambda value: _parse_patch_info(value, pattern)
     )
 
@@ -268,7 +270,7 @@ def soft_label(
             )
 
         patch_width, patch_height = _find_first_image(
-            result["fpath"],
+            result["fpth"],
             image_folder,
         )
     else:
@@ -336,6 +338,7 @@ def soft_label(
         classes,
         cmap_name="tab20",
     )
+    class_colors[str(float("NaN"))] = (0,0,0,255)
 
     # Each class is blurred independently so categorical colors do not get
     # blended into arbitrary intermediate RGB values.
@@ -363,7 +366,7 @@ def soft_label(
 
         if image_folder is not None:
             patch_path = _resolve_patch_path(
-                row.fpath,
+                row.fpth,
                 image_folder,
             )
 

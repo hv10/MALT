@@ -151,14 +151,11 @@ def soft_labeling(
     source, dest, pattern, img_folder, radius, radius_gauss, patch_size, posbyidx, alpha
 ):
     """Make a soft labeling from a malt state file or a pandas readable table."""
-    from components.utils import has_header, load_table
+    from components.utils import has_header, load_table, load_labels
     from scripts.make_soft_labeling import soft_label
 
     if source.suffix == ".malt":
-        import pandas as pd
-
-        # df = load_labels(source)
-        df = pd.DataFrame(columns=["fpath", "cls"])
+        df = load_labels(source)
     else:
         df = load_table(source, header=has_header(source))
     soft_label(
