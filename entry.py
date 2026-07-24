@@ -2,9 +2,9 @@ import os
 import runpy
 import sys
 from pathlib import Path
+from pprint import pp
 
 import click
-from pprint import pp
 
 
 @click.group(
@@ -141,9 +141,17 @@ def convert_aeon_ts(source, directory, start_index):
     "-ps", "--patch-size", type=click.IntRange(min=1), nargs=2, default=(25, 25)
 )
 @click.option("--posbyidx", is_flag=True, help="patch position is given by index")
-def soft_labeling(source, dest, pattern, img_folder, radius, radius_gauss, patch_size, posbyidx):
+@click.option(
+    "--alpha",
+    type=click.FloatRange(min=0, max=1.0),
+    default=1.0,
+    help="additional transparency when blending with original image",
+)
+def soft_labeling(
+    source, dest, pattern, img_folder, radius, radius_gauss, patch_size, posbyidx, alpha
+):
     """Make a soft labeling from a malt state file or a pandas readable table."""
-    from components.utils import load_table, has_header
+    from components.utils import has_header, load_table
     from scripts.make_soft_labeling import soft_label
 
     if source.suffix == ".malt":
@@ -153,7 +161,17 @@ def soft_labeling(source, dest, pattern, img_folder, radius, radius_gauss, patch
         df = pd.DataFrame(columns=["fpath", "cls"])
     else:
         df = load_table(source, header=has_header(source))
-    soft_label(df, dest, pattern, img_folder, radius, radius_gauss, patch_size, patch_pos_by_idx=posbyidx)
+    soft_label(
+        df,
+        dest,
+        pattern,
+        img_folder,
+        radius,
+        radius_gauss,
+        patch_size,
+        patch_pos_by_idx=posbyidx,
+        alpha=alpha,
+    )
 
 
 def main():

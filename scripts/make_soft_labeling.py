@@ -165,6 +165,7 @@ def soft_label(
     gauss: int | float,
     patch_size: tuple[int, int] | None,
     patch_pos_by_idx: bool = True,
+    alpha: float = 1.0,
 ) -> pd.DataFrame:
     """
     Reconstruct an image from patches and overlay blurred categorical labels.
@@ -205,7 +206,10 @@ def soft_label(
     gauss:
         Gaussian blur radius, in pixels; or as a fraction 0<rg<1, in %of patch-width.
     patch_size:
-        ``(width, height)`` used when ``img_folder`` is None. Ignored otherwise.
+        ``(width, height)`` used when ``img_folder`` is None. Ignored otherwise. 
+        Make sure that when this is used that either patch_pos_by_idx is set or that the patch_size is set accordingly.
+    patch_pos_by_idx:
+        If the patch position is given by an index pair rather than a pixel position.
 
     Returns
     -------
@@ -320,7 +324,7 @@ def soft_label(
     base = Image.new(
         "RGBA",
         (canvas_width, canvas_height),
-        (0, 0, 0, 255),
+        (0, 0, 0, 0),
     )
 
     classes = sorted(
@@ -450,7 +454,7 @@ def soft_label(
     )
     label_array[..., :3] = label_rgb
     label_array[..., 3] = np.round(
-        label_alpha * 128
+        label_alpha * np.ceil((255*alpha))
     ).astype(np.uint8)
 
     label_layer = Image.fromarray(
@@ -458,10 +462,14 @@ def soft_label(
         mode="RGBA",
     )
 
-    combined = Image.alpha_composite(
-        base,
-        label_layer,
-    )
+    if img_folder is None:
+        combined = label_layer
+    else:
+        combined = Image.alpha_composite(
+            base,
+            label_layer,
+        )
+
 
     combined.save(
         _resolve_output_path(dest)
