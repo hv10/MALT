@@ -14,7 +14,7 @@ parser.add_argument(
     "-t",
     "--task",
     choices=["classification", "multilabel"],
-    default="classification",
+    default=None,
 )
 parser.add_argument("-d", "--directory", type=Path, default=Path.cwd())
 parser.add_argument("--color-blind", action="store_true")
@@ -362,17 +362,25 @@ def setup_state(cfg, directory, color_blind, prepare, theme, task):
 
     if STATE is None:
         state = State()
-        # setup model for embedding
-        state.META["cfg"] = tomllib.load(open(cfg, "rb"))
         state.COLORBLIND = color_blind
         state.THEME = theme
+        state.META["cfg"] = tomllib.load(open(cfg, "rb"))
+        if task != state.META["cfg"].get("task", None):
+            print(
+                """Warning: the user set task, and the task in the build cfg differ. The users cli choice `--task` is assumed to be correct."""
+            )
+            state.META["cfg"]["task"] = task
         if task == "multilabel":
             state.META["multilabel"] = True
+        
         directory = Path(directory)
         if not directory.is_dir():
             directory = directory.parent
         state.OUT_DIR = directory.resolve().absolute()
         if prepare:
+            if task is None:
+                print("Warning: No task was set. Assuming 'classification'.")
+                task = "classification"
             apply_build_cfg(state)
             load_folder(state, directory)
         print("OUTDIR:", state.OUT_DIR)
