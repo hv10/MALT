@@ -62,6 +62,7 @@ def safe_load_cls(val):
 
 
 def load_prior_state(state, state_pth):
+    print(f"Loading prior state from {state_pth}.")
     with zipfile.ZipFile(state_pth, "r") as zipf:
         with zipf.open("data.parquet") as f:
             with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
@@ -83,7 +84,7 @@ def load_prior_state(state, state_pth):
         with zipf.open("meta.json") as fp:
             state.META = state.META | json.load(fp)
             load_build_cfg(state, state.META.get("cfg", None))
-            print(state.META["classes"])
+    print("Labels:", state.META["classes"])
     print(state.DATA.info())
     print(state.DATA.head())
 

@@ -1,10 +1,11 @@
 import csv
 from functools import wraps
+from pathlib import Path
 
 from nicegui import app
 
 
-def is_number(s):
+def is_numeric(s):
     try:
         float(s)
     except ValueError:  # Failed
@@ -12,17 +13,41 @@ def is_number(s):
     else:  # Succeeded
         return True
 
+def has_header(path):
+    preview = load_table(
+        path,
+        header=None,
+        nrows=10,
+    )
 
-def has_header(path, sep=","):
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        if any(
-            value.strip().lower() != "nan" and not is_number(value)
-            for value in next(csv.reader(f, delimiter=sep))
-        ):
-            return 1
-        else:
-            return None
+    if len(preview) < 2:
+        return False
 
+    first_row = preview.iloc[0]
+    remaining = preview.iloc[1:]
+
+    first_numeric_ratio = first_row.map(is_numeric).mean()
+    remaining_numeric_ratio = remaining.map(is_numeric).mean().mean()
+
+    return 0 if first_numeric_ratio < remaining_numeric_ratio else None
+
+def load_table(source, **kwargs):
+    import pandas as pd
+    source = Path(source)
+    suffix = source.suffix.lower()
+
+    match suffix:
+        case ".csv":
+            return pd.read_csv(source, **kwargs)
+
+        case ".tsv":
+            return pd.read_csv(source, sep="\t", **kwargs)
+
+        case ".xls" | ".xlsx" | ".xlsm" | ".xlsb":
+            return pd.read_excel(source, **kwargs)
+
+        case _:
+            raise ValueError(f"Unsupported file type: {suffix}")
 
 def with_loading_overlay(func):
     debounce = {"timer": None}
