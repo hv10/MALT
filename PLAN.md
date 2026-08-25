@@ -7,9 +7,11 @@
 - [x] support for tabular data
 - [x] add custom cmd as embedder
 - [x] better CLI setup with `malt` and `malt tool` commands
+- added tools:
+  - [x] soft-label assignment for image-patches
+  - [x] provide (`uvx`-callable) tooling for splitting images into overlapping patches
 
 ## Enhancements
-- [ ] provide (`uvx`-callable) tooling for splitting images into overlapping patches
 - add a bunch more modalities
   - [ ] text
   - [ ] genome data?

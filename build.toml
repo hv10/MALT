@@ -1,3 +1,5 @@
+task = "classification"
+
 [embeddings]
 file     = "components/embedder/hf_image_emb.py"
 emb_func = "embed_image"
