@@ -13,7 +13,7 @@
 
 ## Enhancements
 - add a bunch more modalities
-  - [ ] text
+  - [x] text
   - [ ] genome data?
 - [ ] introduce "lenses"
   - [ ] allow more than one embedding per sample
